@@ -1,65 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-
-<title>Dot</title>
-
-<meta
-  name="viewport"
-  content="width=device-width, initial-scale=1.0, viewport-fit=cover"
->
-
-<link
-  rel="icon"
-  href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='42' fill='%237CFF00'/%3E%3C/svg%3E"
->
-
-<link rel="stylesheet" href="./index.css">
+  <meta charset="utf-8">
+  <title>Dot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='42' fill='%237CFF00'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./index.css">
 </head>
-
 <body>
-
-<main class="page">
-
-  <button
-    id="createButton"
-    class="createButton"
-    type="button"
-    aria-label="Create topic"
-  ></button>
-
-  <div class="create">
-
-    <input
-      id="titleInput"
-      type="text"
-      placeholder="Topic"
-      autocomplete="off"
-      spellcheck="false"
-    >
-
-    <input
-      id="mapInput"
-      type="text"
-      placeholder="55.7558, 37.6176"
-      autocomplete="off"
-      spellcheck="false"
-    >
-
-    <div class="hint">
-      Enter topic<br>
-      Enter coordinates<br>
-      Press the green dot
-    </div>
-
-  </div>
-
-  <div id="topics" class="topics"></div>
-
-</main>
-
-<script src="./index.js" defer></script>
-
+  <main class="page">
+    <form id="coordinateForm" class="create">
+      <button id="createButton" class="createButton" type="submit" aria-label="Save coordinates"></button>
+      <input id="mapInput" type="text" placeholder="55.7558, 37.6176" aria-label="Latitude, longitude" autocomplete="off" spellcheck="false" required>
+      <div class="hint">Enter coordinates<br>Press the green dot</div>
+    </form>
+    <p id="status" role="status"></p>
+    <iframe id="map" title="Map" hidden loading="lazy"></iframe>
+    <div id="coordinates" class="coordinates"></div>
+    <button id="loadMore" type="button" hidden>Load more</button>
+  </main>
+  <script src="./index.js" defer></script>
 </body>
 </html>

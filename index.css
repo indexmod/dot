@@ -92,12 +92,12 @@ body {
   line-height: 1.6;
 }
 
-.topics {
+.coordinates {
   display: flex;
   flex-direction: column;
 }
 
-.topic {
+.coordinate {
   display: block;
 
   padding: 14px 0;
@@ -111,7 +111,7 @@ body {
   border-bottom: 1px solid #242529;
 }
 
-.topic:hover {
+.coordinate:hover {
   color: #7cff00;
 }
 
@@ -133,7 +133,13 @@ body {
     font-size: 20px;
   }
 
-  .topic {
+  .coordinate {
     font-size: 20px;
   }
 }
+
+.coordinate { width: 100%; text-align: left; background: transparent; border: 0; border-bottom: 1px solid #242529; cursor: pointer; }
+#map { width: 100%; height: 360px; border: 0; border-radius: 18px; margin-bottom: 24px; }
+#status { color: #aaa; }
+:focus-visible { outline: 2px solid #7cff00; outline-offset: 4px; }
+.create input:focus-visible { outline: 2px solid #7cff00; }

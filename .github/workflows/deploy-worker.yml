@@ -1,16 +1,24 @@
 name: Deploy Cloudflare Worker
-
-# Automatic deployment is intentionally paused until the current
-# production Worker source has been synchronized into this repository.
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
-
+concurrency:
+  group: cloudflare-worker-production
+  cancel-in-progress: false
 jobs:
   deploy:
-    if: ${{ false }}
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Deploy paused pending Cloudflare source sync"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
