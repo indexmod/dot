@@ -1,187 +1,119 @@
-const API = "https://dot.wiki-self.workers.dev";
+const API = "";
 
-const titleInput =
-  document.getElementById("titleInput");
-
-const mapInput =
-  document.getElementById("mapInput");
-
-const createButton =
-  document.getElementById("createButton");
-
-const topics =
-  document.getElementById("topics");
+const titleInput = document.getElementById("titleInput");
+const mapInput = document.getElementById("mapInput");
+const createButton = document.getElementById("createButton");
+const topics = document.getElementById("topics");
 
 function makeSlug(value) {
   return value
     .trim()
     .toLowerCase()
     .normalize("NFKD")
-    .replace(
-      /[\u0300-\u036f]/g,
-      ""
-    )
-    .replace(
-      /[^\p{Letter}\p{Number}]+/gu,
-      "-"
-    )
-    .replace(
-      /^-+|-+$/g,
-      ""
-    );
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{Letter}\p{Number}]+/gu, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+async function readJson(response) {
+  const result = await response.json().catch(() => null);
+
+  if (!response.ok || !result?.ok) {
+    throw new Error(result?.error || `HTTP ${response.status}`);
+  }
+
+  return result;
 }
 
 async function loadTopics() {
+  topics.setAttribute("aria-busy", "true");
+
   try {
-    const response =
-      await fetch(`${API}/api/topics`);
+    const response = await fetch(`${API}/api/topics`);
+    const result = await readJson(response);
 
-    if (!response.ok) {
-      throw new Error(
-        `HTTP ${response.status}`
-      );
+    if (!Array.isArray(result.data)) {
+      throw new Error("Invalid response");
     }
 
-    const result =
-      await response.json();
-
-    if (
-      !result.ok ||
-      !Array.isArray(result.data)
-    ) {
-      throw new Error(
-        "Invalid response"
-      );
-    }
-
-    topics.innerHTML = "";
+    topics.replaceChildren();
 
     result.data.forEach(topic => {
-      const link =
-        document.createElement("a");
-
+      const link = document.createElement("a");
       link.className = "topic";
-
-      link.href =
-        `./topic.html?slug=${encodeURIComponent(
-          topic.slug
-        )}`;
-
-      link.textContent =
-        topic.title || "";
-
+      link.href = `./topic.html?slug=${encodeURIComponent(topic.slug)}`;
+      link.textContent = topic.title || "";
       topics.appendChild(link);
     });
-
   } catch (error) {
-    console.error(
-      "Topics error:",
-      error
-    );
-
-    topics.innerHTML = "";
+    console.error("Topics error:", error);
+    topics.textContent = "Could not load topics.";
+  } finally {
+    topics.removeAttribute("aria-busy");
   }
 }
 
 async function createTopic() {
-  const title =
-    titleInput.value.trim();
-
-  const coordinates =
-    mapInput.value.trim();
+  const title = titleInput.value.trim();
+  const map = mapInput.value.trim();
 
   if (!title) {
     titleInput.focus();
     return;
   }
 
-  if (!coordinates) {
+  if (!map) {
     mapInput.focus();
     return;
   }
 
-  const slug =
-    makeSlug(title);
+  const slug = makeSlug(title);
 
   if (!slug) {
-    alert(
-      "Не удалось создать slug."
-    );
+    alert("Could not create a valid address for this topic.");
     return;
   }
 
   createButton.disabled = true;
 
   try {
-    const response =
-      await fetch(`${API}/api/topic`, {
-        method: "POST",
+    const response = await fetch(`${API}/api/topic`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        title,
+        map,
+        slug
+      })
+    });
 
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
-
-        body: JSON.stringify({
-          title,
-          coordinates,
-          slug
-        })
-      });
-
-    const result =
-      await response.json();
-
-    if (!response.ok || !result.ok) {
-      throw new Error(
-        result.error ||
-        `HTTP ${response.status}`
-      );
-    }
-
-    window.location.href =
-      `./topic.html?slug=${encodeURIComponent(
-        result.topic.slug
-      )}`;
-
+    const result = await readJson(response);
+    window.location.assign(
+      `./topic.html?slug=${encodeURIComponent(result.topic.slug)}`
+    );
   } catch (error) {
-    console.error(
-      "Create topic error:",
-      error
-    );
-
-    alert(
-      error.message ||
-      "Не удалось создать тему."
-    );
-
+    console.error("Create topic error:", error);
+    alert(error.message || "Could not create topic.");
     createButton.disabled = false;
   }
 }
 
-createButton.addEventListener(
-  "click",
-  createTopic
-);
+createButton.addEventListener("click", createTopic);
 
-mapInput.addEventListener(
-  "keydown",
-  event => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      createTopic();
-    }
+mapInput.addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    createTopic();
   }
-);
+});
 
-titleInput.addEventListener(
-  "keydown",
-  event => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      mapInput.focus();
-    }
+titleInput.addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    mapInput.focus();
   }
-);
+});
 
 loadTopics();
