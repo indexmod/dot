@@ -1,4 +1,4 @@
-const API = "";
+const API = window.location.hostname.endsWith(".github.io")\n  ? "https://dot.wiki-self.workers.dev"\n  : "";
 
 const params = new URLSearchParams(window.location.search);
 const slug = params.get("slug");
@@ -65,7 +65,7 @@ function showMapFallback() {
 function renderMap() {
   map.replaceChildren();
 
-  const embedUrl = mapEmbedUrl(Number(topic?.lat), Number(topic?.lng));
+  const lat = topic?.lat === null || topic?.lat === undefined\n    ? NaN\n    : Number(topic.lat);\n  const lng = topic?.lng === null || topic?.lng === undefined\n    ? NaN\n    : Number(topic.lng);\n  const embedUrl = mapEmbedUrl(lat, lng);
 
   if (!embedUrl) {
     showMapFallback();
