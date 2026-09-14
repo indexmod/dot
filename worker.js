@@ -25,55 +25,23 @@ function slugify(value) {
     .replace(/^-+|-+$/g, "");
 }
 
-function validCoordinates(lat, lng) {
-  return (
-    Number.isFinite(lat) &&
-    Number.isFinite(lng) &&
-    lat >= -90 &&
-    lat <= 90 &&
-    lng >= -180 &&
-    lng <= 180
-  );
-}
-
 function parseCoordinates(value) {
-  const text = String(value || "").trim();
+  const match = String(value || "").trim().match(
+    /^(-?\d{1,2}(?:\.\d+)?)\s*[,;]\s*(-?\d{1,3}(?:\.\d+)?)$/
+  );
 
-  if (!text) {
+  if (!match) {
     return null;
   }
 
-  const patterns = [
-    /@(-?\d{1,2}(?:\.\d+)?),(-?\d{1,3}(?:\.\d+)?)/,
-    /[?&](?:ll|query|q|center)=(-?\d{1,2}(?:\.\d+)?)(?:%2C|,|%20)(-?\d{1,3}(?:\.\d+)?)/i,
-    /#map=\d+(?:\.\d+)?\/(-?\d{1,2}(?:\.\d+)?)\/(-?\d{1,3}(?:\.\d+)?)/i,
-    /^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,; ]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/
-  ];
+  const lat = Number(match[1]);
+  const lng = Number(match[2]);
 
-  let decoded = text;
-
-  try {
-    decoded = decodeURIComponent(text);
-  } catch {
-    // Keep the original text when it contains malformed escape sequences.
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    return null;
   }
 
-  for (const pattern of patterns) {
-    const match = decoded.match(pattern);
-
-    if (!match) {
-      continue;
-    }
-
-    const lat = Number(match[1]);
-    const lng = Number(match[2]);
-
-    if (validCoordinates(lat, lng)) {
-      return { lat, lng };
-    }
-  }
-
-  return null;
+  return { lat, lng };
 }
 
 async function readBody(request) {
@@ -99,10 +67,6 @@ async function getTopics(env) {
   }
 }
 
-async function saveTopics(env, topics) {
-  await env.DB.put("topics", JSON.stringify(topics));
-}
-
 async function getTopic(env, slug) {
   const raw = await env.DB.get(`topic:${slug}`);
 
@@ -117,8 +81,8 @@ async function getTopic(env, slug) {
   }
 }
 
-async function saveTopic(env, topic) {
-  await env.DB.put(`topic:${topic.slug}`, JSON.stringify(topic));
+function saveTopic(env, topic) {
+  return env.DB.put(`topic:${topic.slug}`, JSON.stringify(topic));
 }
 
 async function createTopic(request, env) {
@@ -129,15 +93,19 @@ async function createTopic(request, env) {
   }
 
   const title = String(body.title || "").trim().slice(0, 160);
-  const map = String(body.map || body.coordinates || "").trim().slice(0, 2048);
+  const coordinates = String(body.coordinates || "").trim();
+  const point = parseCoordinates(coordinates);
   const slug = slugify(String(body.slug || title)).slice(0, 160);
 
   if (!title) {
     return json({ ok: false, error: "Title required" }, 400);
   }
 
-  if (!map) {
-    return json({ ok: false, error: "Map link or coordinates required" }, 400);
+  if (!point) {
+    return json({
+      ok: false,
+      error: "Use coordinates in the format: 55.7558, 37.6176"
+    }, 400);
   }
 
   if (!slug) {
@@ -148,28 +116,24 @@ async function createTopic(request, env) {
     return json({ ok: false, error: "Topic already exists" }, 409);
   }
 
-  const coordinates = parseCoordinates(map);
   const topic = {
     title,
-    map,
     slug,
-    lat: coordinates?.lat ?? null,
-    lng: coordinates?.lng ?? null,
+    lat: point.lat,
+    lng: point.lng,
     posts: []
   };
 
   await saveTopic(env, topic);
 
   const topics = await getTopics(env);
-  const filtered = topics.filter(item => item?.slug !== slug);
-  filtered.unshift({
+  topics.unshift({
     title,
-    map,
     slug,
-    lat: topic.lat,
-    lng: topic.lng
+    lat: point.lat,
+    lng: point.lng
   });
-  await saveTopics(env, filtered);
+  await env.DB.put("topics", JSON.stringify(topics));
 
   return json({ ok: true, topic }, 201);
 }
@@ -187,15 +151,6 @@ async function fetchTopic(url, env) {
     return json({ ok: false, error: "Topic not found" }, 404);
   }
 
-  const hasCoordinates =\n    topic.lat !== null &&\n    topic.lat !== undefined &&\n    topic.lng !== null &&\n    topic.lng !== undefined &&\n    validCoordinates(Number(topic.lat), Number(topic.lng));\n\n  if (!hasCoordinates) {
-    const coordinates = parseCoordinates(topic.map || topic.coordinates);
-
-    if (coordinates) {
-      topic.lat = coordinates.lat;
-      topic.lng = coordinates.lng;
-    }
-  }
-
   return json({ ok: true, topic });
 }
 
@@ -208,10 +163,6 @@ async function mutatePost(request, env) {
 
   const slug = String(body.slug || "").trim();
   const topic = slug ? await getTopic(env, slug) : null;
-
-  if (!slug) {
-    return json({ ok: false, error: "Slug required" }, 400);
-  }
 
   if (!topic) {
     return json({ ok: false, error: "Topic not found" }, 404);
@@ -245,13 +196,13 @@ async function mutatePost(request, env) {
       }
 
       topic.posts[index].text = text;
-    } else if (request.method === "DELETE") {
+    } else {
       topic.posts.splice(index, 1);
     }
   }
 
   await saveTopic(env, topic);
-  return json({ ok: true, topic });
+  return json({ ok: true });
 }
 
 export default {
@@ -259,10 +210,7 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
-      return new Response(null, {
-        status: 204,
-        headers: corsHeaders
-      });
+      return new Response(null, { status: 204, headers: corsHeaders });
     }
 
     if (url.pathname.startsWith("/api/") && !env.DB) {
