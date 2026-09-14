@@ -1,4 +1,4 @@
-const API = "";
+const API = window.location.hostname.endsWith(".github.io")\n  ? "https://dot.wiki-self.workers.dev"\n  : "";
 
 const titleInput = document.getElementById("titleInput");
 const mapInput = document.getElementById("mapInput");
