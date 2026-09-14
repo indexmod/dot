@@ -1,28 +1,98 @@
-js
-const CORS = {
+const headers = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type"
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Content-Type": "application/json; charset=utf-8"
 };
 
 function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      ...CORS
+  return new Response(
+    JSON.stringify(data),
+    {
+      status,
+      headers
     }
-  });
+  );
+}
+
+function slugify(value) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{Letter}\p{Number}]+/gu, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+async function getTopics(env) {
+  try {
+    const raw = await env.DB.get("topics");
+
+    if (!raw) {
+      return [];
+    }
+
+    const topics = JSON.parse(raw);
+
+    return Array.isArray(topics)
+      ? topics
+      : [];
+
+  } catch (error) {
+    console.log("GET TOPICS ERROR:", error);
+    return [];
+  }
+}
+
+async function saveTopics(env, topics) {
+  await env.DB.put(
+    "topics",
+    JSON.stringify(topics)
+  );
+}
+
+async function getTopic(env, slug) {
+  try {
+    const raw =
+      await env.DB.get(
+        `topic:${slug}`
+      );
+
+    if (!raw) {
+      return null;
+    }
+
+    return JSON.parse(raw);
+
+  } catch (error) {
+    console.log("GET TOPIC ERROR:", error);
+    return null;
+  }
+}
+
+async function saveTopic(env, topic) {
+  await env.DB.put(
+    `topic:${topic.slug}`,
+    JSON.stringify(topic)
+  );
+}
+
+async function deleteTopic(env, slug) {
+  await env.DB.delete(
+    `topic:${slug}`
+  );
 }
 
 export default {
-  async fetch(req, env) {
-    const url = new URL(req.url);
+  async fetch(request, env) {
+    const url =
+      new URL(request.url);
 
-    if (req.method === "OPTIONS") {
+    if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
-        headers: CORS
+        headers
       });
     }
 
@@ -36,87 +106,12 @@ export default {
       );
     }
 
-    async function getTopics() {
-      try {
-        const raw = await env.DB.get("topics");
-        return raw ? JSON.parse(raw) : [];
-      } catch {
-        return [];
-      }
-    }
-
-    async function saveTopics(topics) {
-      await env.DB.put(
-        "topics",
-        JSON.stringify(topics)
-      );
-    }
-
-    async function getTopic(id) {
-      try {
-        const raw = await env.DB.get(`topic:${id}`);
-        return raw ? JSON.parse(raw) : null;
-      } catch {
-        return null;
-      }
-    }
-
-    async function saveTopic(topic) {
-      await env.DB.put(
-        `topic:${topic.id}`,
-        JSON.stringify(topic)
-      );
-    }
-
-    async function geocode(title) {
-      try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(title)}`,
-          {
-            headers: {
-              "User-Agent": "Dot Indexmod"
-            }
-          }
-        );
-
-        if (!response.ok) {
-          return null;
-        }
-
-        const results = await response.json();
-
-        if (!Array.isArray(results) || !results.length) {
-          return null;
-        }
-
-        const result = results[0];
-
-        return {
-          lat: Number(result.lat),
-          lng: Number(result.lon),
-          zoom: 15
-        };
-
-      } catch {
-        return null;
-      }
-    }
-
-    /*
-     * LIST TOPICS
-     */
-
     if (
-      req.method === "GET" &&
-      url.pathname === "/api/topics"
+      url.pathname === "/api/topics" &&
+      request.method === "GET"
     ) {
-      const topics = await getTopics();
-
-      topics.sort(
-        (a, b) =>
-          new Date(b.created) -
-          new Date(a.created)
-      );
+      const topics =
+        await getTopics(env);
 
       return json({
         ok: true,
@@ -124,66 +119,102 @@ export default {
       });
     }
 
-    /*
-     * CREATE TOPIC
-     */
-
     if (
-      req.method === "POST" &&
-      url.pathname === "/api/topic"
+      url.pathname === "/api/topic" &&
+      request.method === "POST"
     ) {
       try {
-        const body = await req.json();
+        const body =
+          await request.json();
 
         const title =
-          String(body.title || "").trim();
+          String(body.title || "")
+            .trim();
+
+        const map =
+          String(body.map || "")
+            .trim();
+
+        let slug =
+          String(body.slug || "")
+            .trim();
 
         if (!title) {
           return json(
             {
               ok: false,
-              error: "TITLE REQUIRED"
+              error: "Title required"
             },
             400
           );
         }
 
-        const id =
-          `${Date.now()}-${Math.random()
-            .toString(36)
-            .slice(2, 8)}`;
+        if (!map) {
+          return json(
+            {
+              ok: false,
+              error: "Map required"
+            },
+            400
+          );
+        }
 
-        const created =
-          new Date().toISOString();
+        if (!slug) {
+          slug =
+            slugify(title);
+        }
 
-        const location =
-          await geocode(title);
+        if (!slug) {
+          return json(
+            {
+              ok: false,
+              error: "Invalid slug"
+            },
+            400
+          );
+        }
+
+        const existing =
+          await getTopic(
+            env,
+            slug
+          );
+
+        if (existing) {
+          return json(
+            {
+              ok: false,
+              error: "Topic already exists"
+            },
+            409
+          );
+        }
 
         const topic = {
-          id,
           title,
-          created,
-          lat: location?.lat ?? null,
-          lng: location?.lng ?? null,
-          zoom: location?.zoom ?? 15,
+          map,
+          slug,
           posts: []
         };
 
-        await saveTopic(topic);
+        await saveTopic(
+          env,
+          topic
+        );
 
         const topics =
-          await getTopics();
+          await getTopics(env);
 
         topics.unshift({
-          id,
           title,
-          created,
-          lat: topic.lat,
-          lng: topic.lng,
-          zoom: topic.zoom
+          map,
+          slug
         });
 
-        await saveTopics(topics);
+        await saveTopics(
+          env,
+          topics
+        );
 
         return json({
           ok: true,
@@ -191,47 +222,51 @@ export default {
         });
 
       } catch (error) {
-        console.error(error);
+        console.log(
+          "CREATE TOPIC ERROR:",
+          error
+        );
 
         return json(
           {
             ok: false,
-            error: "CREATE FAILED"
+            error: "Create failed"
           },
           500
         );
       }
     }
 
-    /*
-     * GET TOPIC
-     */
-
     if (
-      req.method === "GET" &&
-      url.pathname === "/api/topic"
+      url.pathname === "/api/topic" &&
+      request.method === "GET"
     ) {
-      const id =
-        url.searchParams.get("id");
+      const slug =
+        url.searchParams.get(
+          "slug"
+        );
 
-      if (!id) {
+      if (!slug) {
         return json(
           {
             ok: false,
-            error: "ID REQUIRED"
+            error: "Slug required"
           },
           400
         );
       }
 
       const topic =
-        await getTopic(id);
+        await getTopic(
+          env,
+          slug
+        );
 
       if (!topic) {
         return json(
           {
             ok: false,
-            error: "TOPIC NOT FOUND"
+            error: "Topic not found"
           },
           404
         );
@@ -243,110 +278,261 @@ export default {
       });
     }
 
-    /*
-     * ADD POST TO TOPIC
-     */
-
     if (
-      req.method === "POST" &&
-      url.pathname === "/api/topic/post"
+      url.pathname === "/api/topic/post" &&
+      request.method === "POST"
     ) {
       try {
-        const body = await req.json();
+        const body =
+          await request.json();
 
-        const topicId =
-          String(body.topicId || "").trim();
+        const slug =
+          String(body.slug || "")
+            .trim();
 
         const text =
-          String(body.text || "").trim();
+          String(body.text || "")
+            .trim();
 
-        if (!topicId || !text) {
+        const userpic =
+          String(body.userpic || "")
+            .trim();
+
+        if (!slug || !text) {
           return json(
             {
               ok: false,
-              error: "TOPIC AND TEXT REQUIRED"
+              error: "Slug and text required"
             },
             400
           );
         }
 
         const topic =
-          await getTopic(topicId);
+          await getTopic(
+            env,
+            slug
+          );
 
         if (!topic) {
           return json(
             {
               ok: false,
-              error: "TOPIC NOT FOUND"
+              error: "Topic not found"
             },
             404
           );
         }
 
-        const post = {
-          id:
-            `${Date.now()}-${Math.random()
-              .toString(36)
-              .slice(2, 8)}`,
-
+        topic.posts.push({
           text,
+          userpic
+        });
 
-          userpic:
-            String(body.userpic || "🙂"),
-
-          created:
-            new Date().toISOString()
-        };
-
-        topic.posts =
-          Array.isArray(topic.posts)
-            ? topic.posts
-            : [];
-
-        topic.posts.push(post);
-
-        await saveTopic(topic);
+        await saveTopic(
+          env,
+          topic
+        );
 
         return json({
-          ok: true,
-          post
+          ok: true
         });
 
       } catch (error) {
-        console.error(error);
+        console.log(
+          "ADD POST ERROR:",
+          error
+        );
 
         return json(
           {
             ok: false,
-            error: "POST FAILED"
+            error: "Post failed"
           },
           500
         );
       }
     }
 
-    /*
-     * OLD FEED API
-     * Kept temporarily so nothing breaks.
-     */
-
     if (
-      req.method === "GET" &&
-      url.pathname === "/api/feed"
+      url.pathname === "/api/topic/post" &&
+      request.method === "PUT"
     ) {
-      const topics =
-        await getTopics();
+      try {
+        const body =
+          await request.json();
 
-      return json({
-        ok: true,
-        data: topics
-      });
+        const slug =
+          String(body.slug || "")
+            .trim();
+
+        const index =
+          Number(body.index);
+
+        const text =
+          String(body.text || "")
+            .trim();
+
+        if (
+          !slug ||
+          !Number.isInteger(index) ||
+          index < 0 ||
+          !text
+        ) {
+          return json(
+            {
+              ok: false,
+              error: "Invalid request"
+            },
+            400
+          );
+        }
+
+        const topic =
+          await getTopic(
+            env,
+            slug
+          );
+
+        if (!topic) {
+          return json(
+            {
+              ok: false,
+              error: "Topic not found"
+            },
+            404
+          );
+        }
+
+        if (
+          index >= topic.posts.length
+        ) {
+          return json(
+            {
+              ok: false,
+              error: "Post not found"
+            },
+            404
+          );
+        }
+
+        topic.posts[index].text =
+          text;
+
+        await saveTopic(
+          env,
+          topic
+        );
+
+        return json({
+          ok: true
+        });
+
+      } catch (error) {
+        console.log(
+          "UPDATE POST ERROR:",
+          error
+        );
+
+        return json(
+          {
+            ok: false,
+            error: "Update failed"
+          },
+          500
+        );
+      }
     }
 
-    /*
-     * STATIC FILES
-     */
+    if (
+      url.pathname === "/api/topic/post" &&
+      request.method === "DELETE"
+    ) {
+      try {
+        const body =
+          await request.json();
 
-    return env.ASSETS.fetch(req);
+        const slug =
+          String(body.slug || "")
+            .trim();
+
+        const index =
+          Number(body.index);
+
+        if (
+          !slug ||
+          !Number.isInteger(index) ||
+          index < 0
+        ) {
+          return json(
+            {
+              ok: false,
+              error: "Invalid request"
+            },
+            400
+          );
+        }
+
+        const topic =
+          await getTopic(
+            env,
+            slug
+          );
+
+        if (!topic) {
+          return json(
+            {
+              ok: false,
+              error: "Topic not found"
+            },
+            404
+          );
+        }
+
+        if (
+          index >= topic.posts.length
+        ) {
+          return json(
+            {
+              ok: false,
+              error: "Post not found"
+            },
+            404
+          );
+        }
+
+        topic.posts.splice(
+          index,
+          1
+        );
+
+        await saveTopic(
+          env,
+          topic
+        );
+
+        return json({
+          ok: true
+        });
+
+      } catch (error) {
+        console.log(
+          "DELETE POST ERROR:",
+          error
+        );
+
+        return json(
+          {
+            ok: false,
+            error: "Delete failed"
+          },
+          500
+        );
+      }
+    }
+
+    return env.ASSETS.fetch(
+      request
+    );
   }
 };

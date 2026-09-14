@@ -1,4 +1,3 @@
-html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -23,7 +22,15 @@ html
 
 <main class="page">
 
+  <button
+    id="createButton"
+    class="createButton"
+    type="button"
+    aria-label="Create topic"
+  ></button>
+
   <div class="create">
+
     <input
       id="titleInput"
       type="text"
@@ -32,18 +39,27 @@ html
       spellcheck="false"
     >
 
-    <button
-      id="createButton"
-      type="button"
-      aria-label="Create topic"
-    ></button>
+    <input
+      id="mapInput"
+      type="text"
+      placeholder="Map link"
+      autocomplete="off"
+      spellcheck="false"
+    >
+
+    <div class="hint">
+      Enter topic<br>
+      Enter map link<br>
+      Press the green dot
+    </div>
+
   </div>
 
   <div id="topics" class="topics"></div>
 
 </main>
 
-<script src="./index.js"></script>
+<script src="./index.js" defer></script>
 
 </body>
 </html>

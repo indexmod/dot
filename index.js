@@ -1,14 +1,35 @@
-js
 const API = "https://endless.wiki-self.workers.dev";
 
 const titleInput =
   document.getElementById("titleInput");
+
+const mapInput =
+  document.getElementById("mapInput");
 
 const createButton =
   document.getElementById("createButton");
 
 const topics =
   document.getElementById("topics");
+
+function makeSlug(value) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .replace(
+      /[^\p{Letter}\p{Number}]+/gu,
+      "-"
+    )
+    .replace(
+      /^-+|-+$/g,
+      ""
+    );
+}
 
 async function loadTopics() {
   try {
@@ -35,31 +56,22 @@ async function loadTopics() {
 
     topics.innerHTML = "";
 
-    result.data
-      .slice()
-      .sort((a, b) => {
-        return (
-          new Date(b.created) -
-          new Date(a.created)
-        );
-      })
-      .forEach(topic => {
+    result.data.forEach(topic => {
+      const link =
+        document.createElement("a");
 
-        const link =
-          document.createElement("a");
+      link.className = "topic";
 
-        link.className = "topic";
+      link.href =
+        `./topic.html?slug=${encodeURIComponent(
+          topic.slug
+        )}`;
 
-        link.href =
-          `./topic.html?id=${encodeURIComponent(
-            topic.id
-          )}`;
+      link.textContent =
+        topic.title || "";
 
-        link.textContent =
-          topic.title || "";
-
-        topics.appendChild(link);
-      });
+      topics.appendChild(link);
+    });
 
   } catch (error) {
     console.error(
@@ -75,8 +87,26 @@ async function createTopic() {
   const title =
     titleInput.value.trim();
 
+  const map =
+    mapInput.value.trim();
+
   if (!title) {
     titleInput.focus();
+    return;
+  }
+
+  if (!map) {
+    mapInput.focus();
+    return;
+  }
+
+  const slug =
+    makeSlug(title);
+
+  if (!slug) {
+    alert(
+      "Не удалось создать slug."
+    );
     return;
   }
 
@@ -93,7 +123,9 @@ async function createTopic() {
         },
 
         body: JSON.stringify({
-          title
+          title,
+          map,
+          slug
         })
       });
 
@@ -116,8 +148,8 @@ async function createTopic() {
     }
 
     window.location.href =
-      `./topic.html?id=${encodeURIComponent(
-        result.topic.id
+      `./topic.html?slug=${encodeURIComponent(
+        result.topic.slug
       )}`;
 
   } catch (error) {
@@ -139,12 +171,22 @@ createButton.addEventListener(
   createTopic
 );
 
-titleInput.addEventListener(
+mapInput.addEventListener(
   "keydown",
   event => {
     if (event.key === "Enter") {
       event.preventDefault();
       createTopic();
+    }
+  }
+);
+
+titleInput.addEventListener(
+  "keydown",
+  event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      mapInput.focus();
     }
   }
 );
