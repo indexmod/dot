@@ -1,4 +1,4 @@
-```js
+js
 const API = "https://endless.wiki-self.workers.dev";
 
 const params = new URLSearchParams(
@@ -270,4 +270,3 @@ textInput.addEventListener(
 loadTopic();
 
 autoGrow();
-```
