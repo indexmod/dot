@@ -55,14 +55,14 @@ async function loadTopics() {
 
 async function createTopic() {
   const title = titleInput.value.trim();
-  const map = mapInput.value.trim();
+  const coordinates = mapInput.value.trim();
 
   if (!title) {
     titleInput.focus();
     return;
   }
 
-  if (!map) {
+  if (!coordinates) {
     mapInput.focus();
     return;
   }
