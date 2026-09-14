@@ -1,9 +1,9 @@
 {
-  "name": "endless",
+  "name": "dot",
   "main": "worker.js",
   "compatibility_date": "2026-04-10",
   "assets": {
-    "directory": "public",
+    "directory": ".",
     "binding": "ASSETS"
   },
   "kv_namespaces": [
