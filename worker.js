@@ -187,7 +187,7 @@ async function fetchTopic(url, env) {
     return json({ ok: false, error: "Topic not found" }, 404);
   }
 
-  if (!validCoordinates(Number(topic.lat), Number(topic.lng))) {
+  const hasCoordinates =\n    topic.lat !== null &&\n    topic.lat !== undefined &&\n    topic.lng !== null &&\n    topic.lng !== undefined &&\n    validCoordinates(Number(topic.lat), Number(topic.lng));\n\n  if (!hasCoordinates) {
     const coordinates = parseCoordinates(topic.map || topic.coordinates);
 
     if (coordinates) {
