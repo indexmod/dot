@@ -1,4 +1,4 @@
-const API = "https://dot.wiki-self.workers.dev/";
+const API = "https://dot.wiki-self.workers.dev";
 
 const params = new URLSearchParams(window.location.search);
 const slug = params.get("slug");
