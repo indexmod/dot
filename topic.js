@@ -1,259 +1,252 @@
-const API = "https://dot.wiki-self.workers.dev";
+const API = "";
 
-const params =
-  new URLSearchParams(
-    window.location.search
-  );
-
-const slug =
-  params.get("slug");
-
-const topicTitle =
-  document.getElementById(
-    "topicTitle"
-  );
-
-const map =
-  document.getElementById("map");
-
-const posts =
-  document.getElementById("posts");
-
-const postInput =
-  document.getElementById(
-    "postInput"
-  );
+const params = new URLSearchParams(window.location.search);
+const slug = params.get("slug");
+const topicTitle = document.getElementById("topicTitle");
+const map = document.getElementById("map");
+const posts = document.getElementById("posts");
+const postInput = document.getElementById("postInput");
 
 let topic = null;
+let editingIndex = null;
 
 function randomUserpic() {
   const colors = [
     "#7cff00",
     "#ff6b6b",
-    "#6bcBff",
+    "#6bcbff",
     "#ffd166",
     "#c77dff",
     "#ff9f1c",
     "#2ec4b6"
   ];
 
-  return colors[
-    Math.floor(
-      Math.random() * colors.length
-    )
-  ];
+  return colors[Math.floor(Math.random() * colors.length)];
 }
 
 function mapEmbedUrl(lat, lng) {
-  if (
-    !Number.isFinite(lat) ||
-    !Number.isFinite(lng)
-  ) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
     return "";
   }
 
   const delta = 0.01;
+  const bbox = [
+    lng - delta,
+    lat - delta,
+    lng + delta,
+    lat + delta
+  ].join(",");
 
   return (
     "https://www.openstreetmap.org/export/embed.html" +
-    `?bbox=${lng - delta}%2C${lat - delta}%2C` +
-    `${lng + delta}%2C${lat + delta}` +
-    "&layer=mapnik" +
-    `&marker=${lat}%2C${lng}`
+    `?bbox=${encodeURIComponent(bbox)}&layer=mapnik` +
+    `&marker=${encodeURIComponent(`${lat},${lng}`)}`
   );
+}
+
+function showMapFallback() {
+  const fallback = document.createElement("div");
+  fallback.className = "mapFallback";
+
+  if (topic?.map) {
+    const link = document.createElement("a");
+    link.href = topic.map;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "Open map";
+    fallback.appendChild(link);
+  } else {
+    fallback.textContent = "No coordinates";
+  }
+
+  map.appendChild(fallback);
 }
 
 function renderMap() {
-  map.innerHTML = "";
+  map.replaceChildren();
 
-  if (
-    !topic ||
-    !Number.isFinite(topic.lat) ||
-    !Number.isFinite(topic.lng)
-  ) {
-    const fallback =
-      document.createElement("div");
+  const embedUrl = mapEmbedUrl(Number(topic?.lat), Number(topic?.lng));
 
-    fallback.className =
-      "mapFallback";
-
-    fallback.textContent =
-      "No coordinates";
-
-    map.appendChild(
-      fallback
-    );
-
+  if (!embedUrl) {
+    showMapFallback();
     return;
   }
 
-  const iframe =
-    document.createElement("iframe");
-
-  iframe.src =
-    mapEmbedUrl(
-      topic.lat,
-      topic.lng
-    );
-
+  const iframe = document.createElement("iframe");
+  iframe.src = embedUrl;
+  iframe.title = `Map for ${topic.title || "topic"}`;
   iframe.loading = "lazy";
+  iframe.referrerPolicy = "no-referrer-when-downgrade";
+  map.appendChild(iframe);
+}
 
-  iframe.referrerPolicy =
-    "no-referrer-when-downgrade";
+async function readJson(response) {
+  const result = await response.json().catch(() => null);
 
-  map.appendChild(
-    iframe
-  );
+  if (!response.ok || !result?.ok) {
+    throw new Error(result?.error || `HTTP ${response.status}`);
+  }
+
+  return result;
+}
+
+function postRequest(method, body) {
+  return fetch(`${API}/api/topic/post`, {
+    method,
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  }).then(readJson);
 }
 
 function renderPosts() {
-  posts.innerHTML = "";
+  posts.replaceChildren();
 
-  if (
-    !topic ||
-    !Array.isArray(topic.posts)
-  ) {
+  if (!Array.isArray(topic?.posts)) {
     return;
   }
 
-  topic.posts.forEach(
-    (post, index) => {
+  topic.posts.forEach((post, index) => {
+    const row = document.createElement("div");
+    row.className = "post";
 
-      const row =
-        document.createElement("div");
+    const userpic = document.createElement("div");
+    userpic.className = "userpic";
+    userpic.style.background = post.userpic || "#7cff00";
+    userpic.setAttribute("aria-hidden", "true");
 
-      row.className =
-        "post";
+    const content = document.createElement("div");
+    content.className = "postContent";
 
-      const userpic =
-        document.createElement("div");
+    if (editingIndex === index) {
+      renderEditor(content, post, index);
+    } else {
+      const text = document.createElement("div");
+      text.className = "postText";
+      text.textContent = post.text || "";
 
-      userpic.className =
-        "userpic";
+      const actions = document.createElement("div");
+      actions.className = "postActions";
 
-      userpic.style.background =
-        post.userpic ||
-        randomUserpic();
-
-      const content =
-        document.createElement("div");
-
-      content.className =
-        "postContent";
-
-      const text =
-        document.createElement("div");
-
-      text.className =
-        "postText";
-
-      text.textContent =
-        post.text || "";
-
-      const actions =
-        document.createElement("div");
-
-      actions.className =
-        "postActions";
-
-      const edit =
-        document.createElement("button");
-
+      const edit = document.createElement("button");
       edit.type = "button";
       edit.textContent = "edit";
+      edit.addEventListener("click", () => {
+        editingIndex = index;
+        renderPosts();
+      });
 
-      edit.addEventListener(
-        "click",
-        () => editPost(index)
-      );
-
-      const remove =
-        document.createElement("button");
-
+      const remove = document.createElement("button");
       remove.type = "button";
       remove.textContent = "delete";
+      remove.addEventListener("click", () => deletePost(index, remove));
 
-      remove.addEventListener(
-        "click",
-        () => deletePost(index)
-      );
-
-      actions.appendChild(edit);
-      actions.appendChild(remove);
-
-      content.appendChild(text);
-      content.appendChild(actions);
-
-      row.appendChild(userpic);
-      row.appendChild(content);
-
-      posts.appendChild(row);
+      actions.append(edit, remove);
+      content.append(text, actions);
     }
-  );
+
+    row.append(userpic, content);
+    posts.appendChild(row);
+  });
 }
 
-async function loadTopic() {
-  if (!slug) {
-    topicTitle.textContent =
-      "Topic not found";
+function renderEditor(content, post, index) {
+  const input = document.createElement("input");
+  input.className = "editInput";
+  input.type = "text";
+  input.value = post.text || "";
 
+  const actions = document.createElement("div");
+  actions.className = "postActions";
+
+  const save = document.createElement("button");
+  save.type = "button";
+  save.textContent = "save";
+
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.textContent = "cancel";
+
+  async function submit() {
+    const text = input.value.trim();
+
+    if (!text) {
+      input.focus();
+      return;
+    }
+
+    save.disabled = true;
+
+    try {
+      await postRequest("PUT", { slug, index, text });
+      editingIndex = null;
+      await loadTopic(false);
+    } catch (error) {
+      console.error("Edit error:", error);
+      alert(error.message || "Could not edit line.");
+      save.disabled = false;
+    }
+  }
+
+  save.addEventListener("click", submit);
+  cancel.addEventListener("click", () => {
+    editingIndex = null;
+    renderPosts();
+  });
+
+  input.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      submit();
+    } else if (event.key === "Escape") {
+      editingIndex = null;
+      renderPosts();
+    }
+  });
+
+  actions.append(save, cancel);
+  content.append(input, actions);
+
+  requestAnimationFrame(() => {
+    input.focus();
+    input.select();
+  });
+}
+
+async function loadTopic(focusComposer = true) {
+  if (!slug) {
+    topicTitle.textContent = "Topic not found";
+    postInput.disabled = true;
     return;
   }
 
   try {
-    const response =
-      await fetch(
-        `${API}/api/topic?slug=${encodeURIComponent(
-          slug
-        )}`
-      );
+    const response = await fetch(
+      `${API}/api/topic?slug=${encodeURIComponent(slug)}`
+    );
+    const result = await readJson(response);
 
-    if (!response.ok) {
-      throw new Error(
-        `HTTP ${response.status}`
-      );
-    }
-
-    const result =
-      await response.json();
-
-    if (
-      !result.ok ||
-      !result.topic
-    ) {
-      throw new Error(
-        "Topic not found"
-      );
-    }
-
-    topic =
-      result.topic;
-
-    document.title =
-      topic.title || "Dot";
-
-    topicTitle.textContent =
-      topic.title || "";
-
+    topic = result.topic;
+    document.title = topic.title || "Dot";
+    topicTitle.textContent = topic.title || "";
     renderMap();
     renderPosts();
 
-    postInput.focus();
-
+    if (focusComposer) {
+      postInput.focus();
+    }
   } catch (error) {
-    console.error(
-      "Topic error:",
-      error
-    );
-
-    topicTitle.textContent =
-      "Topic not found";
+    console.error("Topic error:", error);
+    topicTitle.textContent = error.message || "Topic not found";
+    map.replaceChildren();
+    posts.replaceChildren();
+    postInput.disabled = true;
   }
 }
 
 async function addPost() {
-  const text =
-    postInput.value.trim();
+  const text = postInput.value.trim();
 
   if (!text || !slug) {
     return;
@@ -262,261 +255,40 @@ async function addPost() {
   postInput.disabled = true;
 
   try {
-    const response =
-      await fetch(
-        `${API}/api/topic/post`,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body: JSON.stringify({
-            slug,
-            text,
-            userpic:
-              randomUserpic()
-          })
-        }
-      );
-
-    const result =
-      await response.json();
-
-    if (
-      !response.ok ||
-      !result.ok
-    ) {
-      throw new Error(
-        result.error ||
-        `HTTP ${response.status}`
-      );
-    }
-
+    await postRequest("POST", {
+      slug,
+      text,
+      userpic: randomUserpic()
+    });
     postInput.value = "";
-
     await loadTopic();
-
   } catch (error) {
-    console.error(
-      "Post error:",
-      error
-    );
-
-    alert(
-      error.message ||
-      "Не удалось сохранить строку."
-    );
-
+    console.error("Post error:", error);
+    alert(error.message || "Could not save line.");
   } finally {
     postInput.disabled = false;
     postInput.focus();
   }
 }
 
-async function editPost(index) {
-  const row =
-    posts.children[index];
+async function deletePost(index, button) {
+  button.disabled = true;
 
-  if (!row) {
-    return;
-  }
-
-  const content =
-    row.querySelector(
-      ".postContent"
-    );
-
-  const current =
-    topic.posts[index]?.text || "";
-
-  content.innerHTML = "";
-
-  const input =
-    document.createElement("input");
-
-  input.className =
-    "editInput";
-
-  input.type = "text";
-  input.value = current;
-
-  const actions =
-    document.createElement("div");
-
-  actions.className =
-    "postActions";
-
-  const save =
-    document.createElement("button");
-
-  save.type = "button";
-  save.textContent = "save";
-
-  const cancel =
-    document.createElement("button");
-
-  cancel.type = "button";
-  cancel.textContent = "cancel";
-
-  actions.appendChild(save);
-  actions.appendChild(cancel);
-
-  content.appendChild(input);
-  content.appendChild(actions);
-
-  input.focus();
-  input.select();
-
-  save.addEventListener(
-    "click",
-    async () => {
-
-      const text =
-        input.value.trim();
-
-      if (!text) {
-        return;
-      }
-
-      save.disabled = true;
-
-      try {
-        const response =
-          await fetch(
-            `${API}/api/topic/post`,
-            {
-              method: "PUT",
-
-              headers: {
-                "Content-Type":
-                  "application/json"
-              },
-
-              body: JSON.stringify({
-                slug,
-                index,
-                text
-              })
-            }
-          );
-
-        const result =
-          await response.json();
-
-        if (
-          !response.ok ||
-          !result.ok
-        ) {
-          throw new Error(
-            result.error ||
-            `HTTP ${response.status}`
-          );
-        }
-
-        await loadTopic();
-
-      } catch (error) {
-        console.error(
-          "Edit error:",
-          error
-        );
-
-        alert(
-          error.message ||
-          "Не удалось изменить строку."
-        );
-
-        save.disabled = false;
-      }
-    }
-  );
-
-  cancel.addEventListener(
-    "click",
-    () => {
-      renderPosts();
-    }
-  );
-
-  input.addEventListener(
-    "keydown",
-    event => {
-
-      if (event.key === "Enter") {
-        event.preventDefault();
-        save.click();
-      }
-
-      if (event.key === "Escape") {
-        cancel.click();
-      }
-    }
-  );
-}
-
-async function deletePost(index) {
   try {
-    const response =
-      await fetch(
-        `${API}/api/topic/post`,
-        {
-          method: "DELETE",
-
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
-
-          body: JSON.stringify({
-            slug,
-            index
-          })
-        }
-      );
-
-    const result =
-      await response.json();
-
-    if (
-      !response.ok ||
-      !result.ok
-    ) {
-      throw new Error(
-        result.error ||
-        `HTTP ${response.status}`
-      );
-    }
-
-    await loadTopic();
-
+    await postRequest("DELETE", { slug, index });
+    await loadTopic(false);
   } catch (error) {
-    console.error(
-      "Delete error:",
-      error
-    );
-
-    alert(
-      error.message ||
-      "Не удалось удалить строку."
-    );
+    console.error("Delete error:", error);
+    alert(error.message || "Could not delete line.");
+    button.disabled = false;
   }
 }
 
-postInput.addEventListener(
-  "keydown",
-  event => {
-
-    if (
-      event.key === "Enter" &&
-      !event.shiftKey
-    ) {
-      event.preventDefault();
-      addPost();
-    }
+postInput.addEventListener("keydown", event => {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    addPost();
   }
-);
+});
 
 loadTopic();
