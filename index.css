@@ -1,0 +1,83 @@
+css
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  background: #111214;
+  color: #f2f2f2;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.page {
+  width: min(700px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 40px 0 100px;
+}
+
+.create {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+#titleInput {
+  flex: 1;
+  min-width: 0;
+  height: 56px;
+
+  padding: 0 20px;
+
+  border: 0;
+  outline: none;
+  border-radius: 18px;
+
+  background: #1a1b1e;
+  color: #f2f2f2;
+
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 22px;
+}
+
+#titleInput::placeholder {
+  color: #777;
+}
+
+#createButton {
+  flex: 0 0 auto;
+
+  width: 28px;
+  height: 28px;
+
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+
+  background: #7cff00;
+
+  cursor: pointer;
+}
+
+#createButton:hover {
+  transform: scale(1.08);
+}
+
+#createButton:active {
+  transform: scale(0.94);
+}
+
+#createButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.topics {
+  display: flex;
