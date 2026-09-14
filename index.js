@@ -87,7 +87,7 @@ async function createTopic() {
   const title =
     titleInput.value.trim();
 
-  const map =
+  const coordinates =
     mapInput.value.trim();
 
   if (!title) {
@@ -95,7 +95,7 @@ async function createTopic() {
     return;
   }
 
-  if (!map) {
+  if (!coordinates) {
     mapInput.focus();
     return;
   }
@@ -124,26 +124,18 @@ async function createTopic() {
 
         body: JSON.stringify({
           title,
-          map,
+          coordinates,
           slug
         })
       });
 
-    if (!response.ok) {
-      throw new Error(
-        `HTTP ${response.status}`
-      );
-    }
-
     const result =
       await response.json();
 
-    if (
-      !result.ok ||
-      !result.topic
-    ) {
+    if (!response.ok || !result.ok) {
       throw new Error(
-        "Create failed"
+        result.error ||
+        `HTTP ${response.status}`
       );
     }
 
@@ -159,6 +151,7 @@ async function createTopic() {
     );
 
     alert(
+      error.message ||
       "Не удалось создать тему."
     );
 

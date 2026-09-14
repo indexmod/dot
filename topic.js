@@ -1,12 +1,28 @@
 const API = "https://dot.wiki-self.workers.dev";
 
-const params = new URLSearchParams(window.location.search);
-const slug = params.get("slug");
+const params =
+  new URLSearchParams(
+    window.location.search
+  );
 
-const topicTitle = document.getElementById("topicTitle");
-const map = document.getElementById("map");
-const posts = document.getElementById("posts");
-const postInput = document.getElementById("postInput");
+const slug =
+  params.get("slug");
+
+const topicTitle =
+  document.getElementById(
+    "topicTitle"
+  );
+
+const map =
+  document.getElementById("map");
+
+const posts =
+  document.getElementById("posts");
+
+const postInput =
+  document.getElementById(
+    "postInput"
+  );
 
 let topic = null;
 
@@ -22,116 +38,72 @@ function randomUserpic() {
   ];
 
   return colors[
-    Math.floor(Math.random() * colors.length)
+    Math.floor(
+      Math.random() * colors.length
+    )
   ];
 }
 
-function mapEmbedUrl(value) {
-  if (!value) {
+function mapEmbedUrl(lat, lng) {
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng)
+  ) {
     return "";
   }
 
-  try {
-    const url = new URL(value);
+  const delta = 0.01;
 
-    if (
-      url.hostname.includes("google.") ||
-      url.hostname.includes("maps.google.")
-    ) {
-      const match =
-        url.href.match(
-          /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/
-        );
-
-      if (match) {
-        const lat = match[1];
-        const lng = match[2];
-
-        return `https://www.openstreetmap.org/export/embed.html?bbox=${Number(lng) - 0.01}%2C${Number(lat) - 0.01}%2C${Number(lng) + 0.01}%2C${Number(lat) + 0.01}&layer=mapnik&marker=${lat}%2C${lng}`;
-      }
-    }
-
-    if (
-      url.hostname.includes("openstreetmap.org")
-    ) {
-      const match =
-        url.hash.match(
-          /#map=\d+\/(-?\d+(?:\.\d+)?)\/(-?\d+(?:\.\d+)?)/
-        );
-
-      if (match) {
-        const lat = Number(match[1]);
-        const lng = Number(match[2]);
-
-        return `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.01}%2C${lat - 0.01}%2C${lng + 0.01}%2C${lat + 0.01}&layer=mapnik&marker=${lat}%2C${lng}`;
-      }
-    }
-
-    if (
-      url.hostname.includes("yandex.")
-    ) {
-      const match =
-        url.href.match(
-          /ll=(-?\d+(?:\.\d+))%2C(-?\d+(?:\.\d+))/
-        );
-
-      if (match) {
-        const lng = Number(match[1]);
-        const lat = Number(match[2]);
-
-        return `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.01}%2C${lat - 0.01}%2C${lng + 0.01}%2C${lat + 0.01}&layer=mapnik&marker=${lat}%2C${lng}`;
-      }
-    }
-
-  } catch (error) {
-    console.error("Map error:", error);
-  }
-
-  return "";
+  return (
+    "https://www.openstreetmap.org/export/embed.html" +
+    `?bbox=${lng - delta}%2C${lat - delta}%2C` +
+    `${lng + delta}%2C${lat + delta}` +
+    "&layer=mapnik" +
+    `&marker=${lat}%2C${lng}`
+  );
 }
 
-function renderMap(value) {
+function renderMap() {
   map.innerHTML = "";
 
-  const embed =
-    mapEmbedUrl(value);
+  if (
+    !topic ||
+    !Number.isFinite(topic.lat) ||
+    !Number.isFinite(topic.lng)
+  ) {
+    const fallback =
+      document.createElement("div");
 
-  if (embed) {
-    const iframe =
-      document.createElement("iframe");
+    fallback.className =
+      "mapFallback";
 
-    iframe.src = embed;
+    fallback.textContent =
+      "No coordinates";
 
-    iframe.loading = "lazy";
-
-    iframe.referrerPolicy =
-      "no-referrer-when-downgrade";
-
-    map.appendChild(iframe);
+    map.appendChild(
+      fallback
+    );
 
     return;
   }
 
-  const fallback =
-    document.createElement("div");
+  const iframe =
+    document.createElement("iframe");
 
-  fallback.className =
-    "mapFallback";
+  iframe.src =
+    mapEmbedUrl(
+      topic.lat,
+      topic.lng
+    );
 
-  const link =
-    document.createElement("a");
+  iframe.loading = "lazy";
 
-  link.href = value || "#";
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
+  iframe.referrerPolicy =
+    "no-referrer-when-downgrade";
 
-  link.textContent =
-    value
-      ? "Open map"
-      : "No map";
-
-  fallback.appendChild(link);
-  map.appendChild(fallback);
+  map.appendChild(
+    iframe
+  );
 }
 
 function renderPosts() {
@@ -146,15 +118,18 @@ function renderPosts() {
 
   topic.posts.forEach(
     (post, index) => {
+
       const row =
         document.createElement("div");
 
-      row.className = "post";
+      row.className =
+        "post";
 
       const userpic =
         document.createElement("div");
 
-      userpic.className = "userpic";
+      userpic.className =
+        "userpic";
 
       userpic.style.background =
         post.userpic ||
@@ -169,7 +144,8 @@ function renderPosts() {
       const text =
         document.createElement("div");
 
-      text.className = "postText";
+      text.className =
+        "postText";
 
       text.textContent =
         post.text || "";
@@ -227,7 +203,9 @@ async function loadTopic() {
   try {
     const response =
       await fetch(
-        `${API}/api/topic?slug=${encodeURIComponent(slug)}`
+        `${API}/api/topic?slug=${encodeURIComponent(
+          slug
+        )}`
       );
 
     if (!response.ok) {
@@ -248,7 +226,8 @@ async function loadTopic() {
       );
     }
 
-    topic = result.topic;
+    topic =
+      result.topic;
 
     document.title =
       topic.title || "Dot";
@@ -256,8 +235,7 @@ async function loadTopic() {
     topicTitle.textContent =
       topic.title || "";
 
-    renderMap(topic.map);
-
+    renderMap();
     renderPosts();
 
     postInput.focus();
@@ -304,18 +282,16 @@ async function addPost() {
         }
       );
 
-    if (!response.ok) {
-      throw new Error(
-        `HTTP ${response.status}`
-      );
-    }
-
     const result =
       await response.json();
 
-    if (!result.ok) {
+    if (
+      !response.ok ||
+      !result.ok
+    ) {
       throw new Error(
-        "Post failed"
+        result.error ||
+        `HTTP ${response.status}`
       );
     }
 
@@ -330,6 +306,7 @@ async function addPost() {
     );
 
     alert(
+      error.message ||
       "Не удалось сохранить строку."
     );
 
@@ -396,6 +373,7 @@ async function editPost(index) {
   save.addEventListener(
     "click",
     async () => {
+
       const text =
         input.value.trim();
 
@@ -425,18 +403,16 @@ async function editPost(index) {
             }
           );
 
-        if (!response.ok) {
-          throw new Error(
-            `HTTP ${response.status}`
-          );
-        }
-
         const result =
           await response.json();
 
-        if (!result.ok) {
+        if (
+          !response.ok ||
+          !result.ok
+        ) {
           throw new Error(
-            "Update failed"
+            result.error ||
+            `HTTP ${response.status}`
           );
         }
 
@@ -449,6 +425,7 @@ async function editPost(index) {
         );
 
         alert(
+          error.message ||
           "Не удалось изменить строку."
         );
 
@@ -467,6 +444,7 @@ async function editPost(index) {
   input.addEventListener(
     "keydown",
     event => {
+
       if (event.key === "Enter") {
         event.preventDefault();
         save.click();
@@ -499,18 +477,16 @@ async function deletePost(index) {
         }
       );
 
-    if (!response.ok) {
-      throw new Error(
-        `HTTP ${response.status}`
-      );
-    }
-
     const result =
       await response.json();
 
-    if (!result.ok) {
+    if (
+      !response.ok ||
+      !result.ok
+    ) {
       throw new Error(
-        "Delete failed"
+        result.error ||
+        `HTTP ${response.status}`
       );
     }
 
@@ -523,6 +499,7 @@ async function deletePost(index) {
     );
 
     alert(
+      error.message ||
       "Не удалось удалить строку."
     );
   }
@@ -531,6 +508,7 @@ async function deletePost(index) {
 postInput.addEventListener(
   "keydown",
   event => {
+
     if (
       event.key === "Enter" &&
       !event.shiftKey
