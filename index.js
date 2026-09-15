@@ -1,9 +1,10 @@
-import { API, topicUrl, readJson } from "./shared.js";
+import { API, topicUrl, readJson } from "./shared.js?v=3";
 
 const form = document.getElementById("topicForm");
 const titleInput = document.getElementById("titleInput");
 const topics = document.getElementById("topics");
 const status = document.getElementById("status");
+const TOPICS_CACHE = "dot:topics:v1";
 
 function renderTopics(items) {
   topics.innerHTML = "";
@@ -22,11 +23,17 @@ function renderTopics(items) {
 
 async function loadTopics() {
   try {
+    const cached = JSON.parse(localStorage.getItem(TOPICS_CACHE) || "null");
+    if (Array.isArray(cached) && cached.length) renderTopics(cached);
+  } catch { /* Ignore unavailable or corrupt browser storage. */ }
+  try {
     const result = await readJson(await fetch(`${API}/api/topics`));
-    renderTopics(Array.isArray(result.data) ? result.data : []);
-    status.textContent = result.data?.length ? "" : "No topics yet.";
+    const items = Array.isArray(result.data) ? result.data : [];
+    if (items.length || !topics.children.length) renderTopics(items);
+    if (items.length) localStorage.setItem(TOPICS_CACHE, JSON.stringify(items));
+    status.textContent = items.length || topics.children.length ? "" : "No topics yet.";
   } catch (error) {
-    status.textContent = error.message;
+    if (!topics.children.length) status.textContent = error.message;
   }
 }
 

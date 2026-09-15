@@ -1,4 +1,4 @@
-import { API, HOME, routeSlug, readJson } from "./shared.js";
+import { API, HOME, routeSlug, readJson } from "./shared.js?v=3";
 const slug = routeSlug(location.pathname);
 const map = document.getElementById("map");
 const titleInput = document.getElementById("topicTitle");
