@@ -20,6 +20,10 @@ function parseCoordinates(value) {
   return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null;
 }
 const topicKey = slug => `topic:${slug}`;
+const lineEmojis = ["😀", "😎", "🤠", "🤓", "🥳", "😺", "🐼", "🦊", "🐸", "🐙", "🦄", "🐝", "🌈", "⭐", "🔥", "🍀", "🌻", "🍉", "🚀", "🎈"];
+function randomLineEmoji() {
+  return lineEmojis[crypto.getRandomValues(new Uint32Array(1))[0] % lineEmojis.length];
+}
 async function getTopic(env, slug) {
   const raw = await env.DOT_DB.get(topicKey(slug));
   return raw ? JSON.parse(raw) : null;
@@ -38,17 +42,19 @@ export default {
     const url = new URL(request.url);
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
 
-    if (!url.pathname.startsWith("/api/")) {
-      if (url.pathname === "/" || /\.[a-z0-9]+$/i.test(url.pathname)) return env.ASSETS.fetch(request);
-      const asset = new URL("/topic.html", url);
-      return env.ASSETS.fetch(new Request(asset, request));
-    }
+    if (!url.pathname.startsWith("/api/")) return json({ ok: false, error: "API only. Visit https://indexmod.github.io/dot/" }, 404);
     if (!env.DOT_DB) return json({ ok: false, error: "DOT_DB NOT BOUND" }, 500);
 
     try {
       if (url.pathname === "/api/topics" && request.method === "GET") {
-        const page = await env.DOT_DB.list({ prefix: "topic:", limit: 1000 });
-        const data = page.keys.map(k => k.metadata).filter(Boolean)
+        const keys = [];
+        let cursor;
+        do {
+          const page = await env.DOT_DB.list({ prefix: "topic:", limit: 1000, ...(cursor ? { cursor } : {}) });
+          keys.push(...page.keys);
+          cursor = page.list_complete ? null : page.cursor;
+        } while (cursor);
+        const data = keys.map(k => k.metadata).filter(Boolean)
           .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
         return json({ ok: true, data });
       }
@@ -61,7 +67,7 @@ export default {
         const slug = slugify(title);
         if (!title) return json({ ok: false, error: "Topic name required" }, 400);
         if (!point) return json({ ok: false, error: "Use latitude, longitude (for example: 55.7558, 37.6176)" }, 400);
-        if (!slug) return json({ ok: false, error: "Invalid topic name" }, 400);
+        if (!slug || new TextEncoder().encode(topicKey(slug)).length > 512) return json({ ok: false, error: "Invalid or too long topic name" }, 400);
         if (await getTopic(env, slug)) return json({ ok: false, error: "This slug already exists" }, 409);
         const topic = { slug, title, ...point, createdAt: new Date().toISOString(), posts: [] };
         await saveTopic(env, topic);
@@ -101,7 +107,7 @@ export default {
         if (!slug || !text) return json({ ok: false, error: "Slug and text required" }, 400);
         const topic = await getTopic(env, slug);
         if (!topic) return json({ ok: false, error: "Topic not found" }, 404);
-        const post = { id: crypto.randomUUID(), text };
+        const post = { id: crypto.randomUUID(), text, emoji: randomLineEmoji() };
         topic.posts = Array.isArray(topic.posts) ? topic.posts : [];
         topic.posts.push(post);
         await saveTopic(env, topic);

@@ -1,9 +1,5 @@
-const API = window.location.hostname.endsWith(".github.io")
-  ? "https://dot.wiki-self.workers.dev"
-  : "";
-const querySlug = new URLSearchParams(location.search).get("slug");
-const pathSlug = decodeURIComponent(location.pathname.replace(/^\/+|\/+$/g, ""));
-const slug = querySlug || pathSlug;
+import { API, HOME, routeSlug, readJson } from "./shared.js";
+const slug = routeSlug(location.pathname);
 const map = document.getElementById("map");
 const titleInput = document.getElementById("topicTitle");
 const slugLabel = document.getElementById("topicSlug");
@@ -14,26 +10,20 @@ const postInput = document.getElementById("postInput");
 const status = document.getElementById("status");
 let topic = null;
 
-async function readJson(response) {
-  const result = await response.json().catch(() => null);
-  if (!response.ok || !result?.ok) throw new Error(result?.error || `HTTP ${response.status}`);
-  return result;
-}
-
-function mapEmbedUrl(lat, lng) {
-  const d = 0.01;
-  const bbox = [lng - d, lat - d, lng + d, lat + d].join(",");
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${lat},${lng}`;
-}
-
 function renderMap() {
-  map.innerHTML = "";
   if (!topic || !Number.isFinite(topic.lat) || !Number.isFinite(topic.lng)) return;
-  const iframe = document.createElement("iframe");
-  iframe.src = mapEmbedUrl(topic.lat, topic.lng);
-  iframe.loading = "lazy";
-  iframe.title = `Map: ${topic.title}`;
-  map.appendChild(iframe);
+  if (!window.L) { map.textContent = "Map unavailable. Please reload."; return; }
+  const view = L.map(map).setView([topic.lat, topic.lng], 14);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(view);
+  L.circleMarker([topic.lat, topic.lng], {
+    radius: 9, color: "#7cff00", fillColor: "#7cff00", fillOpacity: 1, weight: 2
+  }).addTo(view);
+}
+function resize(textarea) {
+  textarea.style.height = "auto";
+  textarea.style.height = `${textarea.scrollHeight}px`;
 }
 
 function renderPosts() {
@@ -41,15 +31,20 @@ function renderPosts() {
   (topic?.posts || []).forEach(post => {
     const row = document.createElement("div");
     row.className = "post";
-    const dot = document.createElement("span");
-    dot.className = "anonymousDot";
+    const avatar = document.createElement("span");
+    avatar.className = "lineAvatar";
+    avatar.setAttribute("aria-hidden", "true");
+    avatar.textContent = post.emoji || "🙂";
     const textarea = document.createElement("textarea");
     textarea.className = "postText";
     textarea.rows = 1;
     textarea.value = post.text;
+    textarea.setAttribute("aria-label", "Edit anonymous line");
+    textarea.addEventListener("input", () => resize(textarea));
     textarea.addEventListener("change", async () => {
       const text = textarea.value.trim();
       if (!text) { textarea.value = post.text; return; }
+      textarea.disabled = true;
       try {
         const result = await readJson(await fetch(`${API}/api/topic/post`, {
           method: "PUT", headers: { "Content-Type": "application/json" },
@@ -58,9 +53,11 @@ function renderPosts() {
         post.text = result.post.text;
         textarea.value = post.text;
       } catch (error) { status.textContent = error.message; textarea.value = post.text; }
+      finally { textarea.disabled = false; resize(textarea); }
     });
-    row.append(dot, textarea);
+    row.append(avatar, textarea);
     posts.appendChild(row);
+    resize(textarea);
   });
 }
 
@@ -69,6 +66,7 @@ async function loadTopic() {
   try {
     const result = await readJson(await fetch(`${API}/api/topic?slug=${encodeURIComponent(slug)}`));
     topic = result.topic;
+    titleInput.disabled = deleteButton.disabled = postInput.disabled = false;
     titleInput.value = topic.title;
     slugLabel.textContent = topic.slug;
     document.title = `${topic.title} — Dot`;
@@ -77,28 +75,30 @@ async function loadTopic() {
   } catch (error) { status.textContent = error.message; }
 }
 
-let titleTimer;
-titleInput.addEventListener("input", () => {
-  clearTimeout(titleTimer);
-  titleTimer = setTimeout(async () => {
-    const title = titleInput.value.trim();
-    if (!title || !topic || title === topic.title) return;
-    try {
-      const result = await readJson(await fetch(`${API}/api/topic`, {
-        method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, title })
-      }));
-      topic.title = result.topic.title;
-      document.title = `${topic.title} — Dot`;
-      status.textContent = "";
-    } catch (error) { status.textContent = error.message; }
-  }, 450);
+titleInput.addEventListener("change", async () => {
+  const title = titleInput.value.trim();
+  if (!topic) return;
+  if (!title) { titleInput.value = topic.title; return; }
+  if (title === topic.title) return;
+  titleInput.disabled = true;
+  deleteButton.disabled = true;
+  status.textContent = "Saving…";
+  try {
+    const result = await readJson(await fetch(`${API}/api/topic`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, title })
+    }));
+    topic.title = result.topic.title;
+    document.title = `${topic.title} — Dot`;
+    status.textContent = "";
+  } catch (error) { status.textContent = error.message; titleInput.value = topic.title; }
+  finally { titleInput.disabled = deleteButton.disabled = false; }
 });
 
 composer.addEventListener("submit", async event => {
   event.preventDefault();
   const text = postInput.value.trim();
-  if (!text) return;
+  if (!text || !topic || postInput.disabled) return;
   postInput.disabled = true;
   try {
     const result = await readJson(await fetch(`${API}/api/topic/post`, {
@@ -116,15 +116,16 @@ postInput.addEventListener("keydown", event => {
 });
 
 deleteButton.addEventListener("click", async () => {
-  if (!topic || !confirm(`Delete ${topic.title}?`)) return;
+  if (deleteButton.disabled || !topic || !confirm(`Delete ${topic.title}?`)) return;
   deleteButton.disabled = true;
   try {
     await readJson(await fetch(`${API}/api/topic`, {
       method: "DELETE", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slug })
     }));
-    window.location.href = API || "/";
+    window.location.href = HOME;
   } catch (error) { status.textContent = error.message; deleteButton.disabled = false; }
 });
 
+postInput.addEventListener("input", () => resize(postInput));
 loadTopic();

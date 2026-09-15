@@ -1,24 +1,10 @@
-const API = window.location.hostname.endsWith(".github.io")
-  ? "https://dot.wiki-self.workers.dev"
-  : "";
+import { API, topicUrl, readJson } from "./shared.js";
 
 const form = document.getElementById("topicForm");
 const titleInput = document.getElementById("titleInput");
-const mapInput = document.getElementById("mapInput");
 const createButton = document.getElementById("createButton");
 const topics = document.getElementById("topics");
 const status = document.getElementById("status");
-
-async function readJson(response) {
-  const result = await response.json().catch(() => null);
-  if (!response.ok || !result?.ok) throw new Error(result?.error || `HTTP ${response.status}`);
-  return result;
-}
-
-function topicUrl(slug) {
-  if (API) return `${API}/${encodeURIComponent(slug)}`;
-  return `/${encodeURIComponent(slug)}`;
-}
 
 function renderTopics(items) {
   topics.innerHTML = "";
@@ -47,12 +33,14 @@ form.addEventListener("submit", async event => {
   createButton.disabled = true;
   status.textContent = "Creating…";
   try {
+    const match = titleInput.value.trim().match(/^(.+?)[,\s]+(-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?)$/);
+    if (!match) throw new Error("Use Topic name, latitude, longitude (for example: Berlin Wall, 52.5163, 13.3777)");
     const result = await readJson(await fetch(`${API}/api/topic`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        title: titleInput.value.trim(),
-        coordinates: mapInput.value.trim()
+        title: match[1].trim(),
+        coordinates: match[2]
       })
     }));
     window.location.href = topicUrl(result.topic.slug);

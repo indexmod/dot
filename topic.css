@@ -9,6 +9,7 @@ body { background: #111214; color: #f2f2f2; font-family: Arial, Helvetica, sans-
 .topicHead, .post, .composer { display: flex; align-items: flex-start; gap: 12px; }
 .topicDot, .anonymousDot { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 12px; border-radius: 50%; background: #7cff00; }
 .anonymousDot { width: 12px; height: 12px; margin-top: 11px; }
+.lineAvatar { flex: 0 0 24px; width: 24px; height: 34px; display: inline-flex; align-items: center; justify-content: center; font-size: 21px; line-height: 1; }
 .topicTitle { width: 100%; margin: 0; padding: 0; border: 0; outline: 0; background: transparent; color: #f2f2f2; font: 400 42px/1.1 Arial, Helvetica, sans-serif; }
 .meta { margin: 8px 0 10px 30px; color: #777; font-size: 13px; }
 .deleteTopic { margin: 0 0 30px 30px; padding: 0; border: 0; background: transparent; color: #777; cursor: pointer; }
@@ -21,3 +22,6 @@ body { background: #111214; color: #f2f2f2; font-family: Arial, Helvetica, sans-
 #status { color: #aaa; }
 :focus-visible { outline: 2px solid #7cff00; outline-offset: 4px; }
 @media (max-width: 600px) { .page { width: calc(100% - 24px); padding-top: 12px; } .map { height: 300px; border-radius: 16px; } .topicTitle { font-size: 32px; } .postText, #postInput { font-size: 18px; } }
+
+.map { z-index: 0; }
+.composer { z-index: 1; }

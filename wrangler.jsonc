@@ -2,13 +2,6 @@
   "name": "dot",
   "main": "worker.js",
   "compatibility_date": "2026-04-10",
-  "assets": {
-    "directory": "./dist",
-    "binding": "ASSETS",
-    "run_worker_first": [
-      "/*"
-    ]
-  },
   "kv_namespaces": [
     {
       "binding": "DOT_DB",

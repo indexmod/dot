@@ -11,13 +11,12 @@
   <main class="page">
     <form id="topicForm" class="create">
       <button id="createButton" class="createButton" type="submit" aria-label="Create topic"></button>
-      <input id="titleInput" type="text" placeholder="Topic name" autocomplete="off" spellcheck="false" required>
-      <input id="mapInput" type="text" placeholder="55.7558, 37.6176" aria-label="Latitude, longitude" autocomplete="off" spellcheck="false" required>
-      <div class="hint">Topic name + coordinates<br>Press the green dot</div>
+      <input id="titleInput" type="text" placeholder="Topic name + coordinates" aria-label="Topic name + coordinates" autocomplete="off" spellcheck="false" required>
+      <div class="hint">Berlin Wall, 52.5163, 13.3777<br>Press the green dot to create</div>
     </form>
     <p id="status" role="status"></p>
     <div id="topics" class="topics"></div>
   </main>
-  <script src="./index.js" defer></script>
+  <script type="module" src="./index.js"></script>
 </body>
 </html>

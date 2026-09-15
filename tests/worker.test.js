@@ -42,6 +42,7 @@ test("anonymous lines persist and can be edited", async () => {
   const db = storage(); await create(db);
   let r = await worker.fetch(req("POST", "/api/topic/post", { slug: "berlin-wall", text: "first anonymous line" }), envFor(db));
   const post = (await r.json()).post;
+  assert.match(post.emoji, /\S/);
   r = await worker.fetch(req("PUT", "/api/topic/post", { slug: "berlin-wall", id: post.id, text: "edited line" }), envFor(db));
   assert.equal((await r.json()).post.text, "edited line");
 });
@@ -53,8 +54,50 @@ test("delete removes the whole topic", async () => {
   assert.equal(db.data.size, 0);
 });
 
-test("pretty topic path serves topic page", async () => {
-  const db = storage();
-  const r = await worker.fetch(req("GET", "/berlin-wall"), envFor(db));
-  assert.equal(await r.text(), "/topic.html");
+test("Worker exposes JSON only, including unknown public paths", async () => {
+  for (const path of ["/", "/berlin-wall", "/topic", "/topic.html"]) {
+    const response = await worker.fetch(req("GET", path), {});
+    assert.equal(response.status, 404);
+    assert.match(response.headers.get("content-type"), /application\/json/);
+  }
+});
+
+test("delete removes lines and prevents further edits", async () => {
+  const db = storage(); await create(db);
+  const added = await worker.fetch(req("POST", "/api/topic/post", { slug: "berlin-wall", text: "line" }), envFor(db));
+  const { post } = await added.json();
+  await worker.fetch(req("DELETE", "/api/topic", { slug: "berlin-wall" }), envFor(db));
+  assert.equal((await worker.fetch(req("GET", "/api/topic?slug=berlin-wall"), envFor(db))).status, 404);
+  assert.equal((await worker.fetch(req("PUT", "/api/topic/post", { slug: "berlin-wall", id: post.id, text: "changed" }), envFor(db))).status, 404);
+  assert.equal(db.data.size, 0);
+});
+
+test("duplicates, malformed coordinates and overlong slugs are rejected", async () => {
+  const db = storage(); await create(db);
+  assert.equal((await create(db)).status, 409);
+  assert.equal((await create(db, "я".repeat(300))).status, 400);
+  for (const coordinates of ["91, 0", "0, 181", "abc", ""]) {
+    assert.equal((await worker.fetch(req("POST", "/api/topic", { title: "Other", coordinates }), envFor(db))).status, 400);
+  }
+});
+
+test("listing follows KV pagination", async () => {
+  let calls = 0;
+  const response = await worker.fetch(req("GET", "/api/topics"), { DOT_DB: {
+    async list(options) {
+      calls++;
+      if (!options.cursor) return { keys: [{ metadata: { slug: "first", title: "First" } }], cursor: "next", list_complete: false };
+      assert.equal(options.cursor, "next");
+      return { keys: [{ metadata: { slug: "second", title: "Second" } }], list_complete: true };
+    }
+  }});
+  assert.equal(calls, 2);
+  assert.equal((await response.json()).data.length, 2);
+});
+
+test("CORS preflight supports Pages writes", async () => {
+  const response = await worker.fetch(req("OPTIONS", "/api/topic"), {});
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get("access-control-allow-origin"), "*");
+  assert.match(response.headers.get("access-control-allow-methods"), /PUT, DELETE/);
 });
