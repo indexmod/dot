@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Dot</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='42' fill='%237CFF00'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/topic.css">
+</head>
+<body>
+  <main class="page">
+    <div class="top"><a class="back" href="/" aria-label="Home">●</a></div>
+    <div id="map" class="map"></div>
+    <div class="topicHead">
+      <span class="topicDot" aria-hidden="true"></span>
+      <input id="topicTitle" class="topicTitle" aria-label="Topic name">
+    </div>
+    <div class="meta">slug: <span id="topicSlug"></span></div>
+    <button id="deleteTopic" class="deleteTopic" type="button">Delete</button>
+    <p id="status" role="status"></p>
+    <div id="posts" class="posts"></div>
+    <form id="composer" class="composer">
+      <span class="anonymousDot" aria-hidden="true"></span>
+      <textarea id="postInput" rows="1" placeholder="Write an anonymous line" autocomplete="off" spellcheck="false"></textarea>
+    </form>
+  </main>
+  <script src="/topic.js" defer></script>
+</body>
+</html>

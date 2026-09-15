@@ -9,15 +9,14 @@
 </head>
 <body>
   <main class="page">
-    <form id="coordinateForm" class="create">
-      <button id="createButton" class="createButton" type="submit" aria-label="Save coordinates"></button>
+    <form id="topicForm" class="create">
+      <button id="createButton" class="createButton" type="submit" aria-label="Create topic"></button>
+      <input id="titleInput" type="text" placeholder="Topic name" autocomplete="off" spellcheck="false" required>
       <input id="mapInput" type="text" placeholder="55.7558, 37.6176" aria-label="Latitude, longitude" autocomplete="off" spellcheck="false" required>
-      <div class="hint">Enter coordinates<br>Press the green dot</div>
+      <div class="hint">Topic name + coordinates<br>Press the green dot</div>
     </form>
     <p id="status" role="status"></p>
-    <iframe id="map" title="Map" hidden loading="lazy"></iframe>
-    <div id="coordinates" class="coordinates"></div>
-    <button id="loadMore" type="button" hidden>Load more</button>
+    <div id="topics" class="topics"></div>
   </main>
   <script src="./index.js" defer></script>
 </body>
