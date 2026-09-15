@@ -7,8 +7,12 @@ const deleteButton = document.getElementById("deleteTopic");
 const posts = document.getElementById("posts");
 const composer = document.getElementById("composer");
 const postInput = document.getElementById("postInput");
+const composerAvatar = document.getElementById("composerAvatar");
 const status = document.getElementById("status");
 let topic = null;
+const lineEmojis = ["😀", "😎", "🤠", "🤓", "🥳", "😺", "🐼", "🦊", "🐸", "🐙", "🦄", "🐝", "🌈", "⭐", "🔥", "🍀", "🌻", "🍉", "🚀", "🎈"];
+function randomEmoji() { return lineEmojis[Math.floor(Math.random() * lineEmojis.length)]; }
+composerAvatar.textContent = randomEmoji();
 
 function renderMap() {
   if (!topic || !Number.isFinite(topic.lat) || !Number.isFinite(topic.lng)) return;
@@ -107,6 +111,7 @@ composer.addEventListener("submit", async event => {
     }));
     topic.posts.push(result.post);
     postInput.value = "";
+    composerAvatar.textContent = randomEmoji();
     renderPosts();
   } catch (error) { status.textContent = error.message; }
   finally { postInput.disabled = false; postInput.focus(); }

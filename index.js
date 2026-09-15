@@ -2,7 +2,6 @@ import { API, topicUrl, readJson } from "./shared.js";
 
 const form = document.getElementById("topicForm");
 const titleInput = document.getElementById("titleInput");
-const createButton = document.getElementById("createButton");
 const topics = document.getElementById("topics");
 const status = document.getElementById("status");
 
@@ -12,7 +11,11 @@ function renderTopics(items) {
     const link = document.createElement("a");
     link.className = "topic";
     link.href = topicUrl(topic.slug);
+    const dot = document.createElement("span");
+    dot.className = "topicListDot";
+    dot.setAttribute("aria-hidden", "true");
     link.textContent = topic.title;
+    link.prepend(dot);
     topics.appendChild(link);
   });
 }
@@ -29,8 +32,6 @@ async function loadTopics() {
 
 form.addEventListener("submit", async event => {
   event.preventDefault();
-  if (createButton.disabled) return;
-  createButton.disabled = true;
   status.textContent = "Creating…";
   try {
     const match = titleInput.value.trim().match(/^(.+?)[,\s]+(-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?)$/);
@@ -46,7 +47,6 @@ form.addEventListener("submit", async event => {
     window.location.href = topicUrl(result.topic.slug);
   } catch (error) {
     status.textContent = error.message;
-    createButton.disabled = false;
   }
 });
 

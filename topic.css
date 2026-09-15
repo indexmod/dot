@@ -1,6 +1,6 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; min-height: 100%; }
-body { background: #111214; color: #f2f2f2; font-family: Arial, Helvetica, sans-serif; }
+body { background: #292b2e; color: #f2f2f2; font-family: Arial, Helvetica, sans-serif; }
 .page { width: min(900px, calc(100% - 40px)); margin: 0 auto; padding: 20px 0 100px; }
 .top { height: 34px; margin-bottom: 16px; }
 .back { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; color: #7cff00; text-decoration: none; }
@@ -15,9 +15,9 @@ body { background: #111214; color: #f2f2f2; font-family: Arial, Helvetica, sans-
 .deleteTopic { margin: 0 0 30px 30px; padding: 0; border: 0; background: transparent; color: #777; cursor: pointer; }
 .deleteTopic:hover { color: #f2f2f2; }
 .posts { display: flex; flex-direction: column; }
-.post { padding: 8px 0; border-bottom: 1px solid #242529; }
+.post { padding: 8px 0; }
 .postText, #postInput { width: 100%; min-height: 34px; padding: 5px 0; resize: none; overflow: hidden; border: 0; outline: 0; background: transparent; color: #f2f2f2; font: 20px/1.45 Arial, Helvetica, sans-serif; }
-.composer { position: sticky; bottom: 0; padding: 14px 0; background: #111214; }
+.composer { position: sticky; bottom: 0; padding: 14px 0; background: #292b2e; }
 #postInput::placeholder { color: #777; }
 #status { color: #aaa; }
 :focus-visible { outline: 2px solid #7cff00; outline-offset: 4px; }
