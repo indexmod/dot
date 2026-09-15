@@ -2,7 +2,6 @@ import { API, HOME, routeSlug, readJson } from "./shared.js";
 const slug = routeSlug(location.pathname);
 const map = document.getElementById("map");
 const titleInput = document.getElementById("topicTitle");
-const slugLabel = document.getElementById("topicSlug");
 const deleteButton = document.getElementById("deleteTopic");
 const posts = document.getElementById("posts");
 const composer = document.getElementById("composer");
@@ -72,7 +71,6 @@ async function loadTopic() {
     topic = result.topic;
     titleInput.disabled = deleteButton.disabled = postInput.disabled = false;
     titleInput.value = topic.title;
-    slugLabel.textContent = topic.slug;
     document.title = `${topic.title} — Dot`;
     renderMap();
     renderPosts();

@@ -50,4 +50,11 @@ form.addEventListener("submit", async event => {
   }
 });
 
+titleInput.addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    form.requestSubmit();
+  }
+});
+
 loadTopics();
