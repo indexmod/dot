@@ -21,7 +21,7 @@ function renderTopics(items) {
   });
 }
 
-async function loadTopics() {
+async function loadTopics(attempt = 0) {
   try {
     const cached = JSON.parse(localStorage.getItem(TOPICS_CACHE) || "null");
     if (Array.isArray(cached) && cached.length) renderTopics(cached);
@@ -33,7 +33,9 @@ async function loadTopics() {
     if (items.length) localStorage.setItem(TOPICS_CACHE, JSON.stringify(items));
     status.textContent = items.length || topics.children.length ? "" : "No topics yet.";
   } catch (error) {
-    if (!topics.children.length) status.textContent = error.message;
+    if (attempt < 2) {
+      setTimeout(() => loadTopics(attempt + 1), 700 * (attempt + 1));
+    } else if (!topics.children.length) status.textContent = error.message;
   }
 }
 
