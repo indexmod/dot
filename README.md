@@ -1,39 +1,95 @@
 # Dot
 
-Public UI: https://indexmod.github.io/dot/ — Cloudflare Worker https://dot.wiki-self.workers.dev is API only.
+Dot is a small place on the map for anonymous lines.
 
-## Use
+- Public site: https://indexmod.github.io/dot/
+- API: https://dot.wiki-self.workers.dev
+- Share image: `assets/dot-share-banner.png`
 
-HOME has one input: `Berlin Wall, 52.5163, 13.3777`. Press the green dot to create a topic. Below it are topic title links only.
+The site uses GitHub Pages for the interface and a Cloudflare Worker with the existing `DOT_DB` KV namespace for JSON persistence. The Worker is API-only; it does not serve the public website.
 
-The title determines the initial slug (`berlin-wall`). `/dot/berlin-wall` shows the map with a green point, editable title, fixed slug and anonymous lines. Title and line edits save when the field loses focus. Enter submits a new line; Shift+Enter inserts a newline. Delete on the topic page removes the entire topic, including its lines.
+## Features
+
+### Home
+
+Enter a topic name and coordinates in one field, for example:
+
+```text
+Berlin Wall, 52.5163, 13.3777
+```
+
+Press Enter to create the topic. The title is converted to a slug once (`Berlin Wall` becomes `berlin-wall`). The slug never changes, even when the title is edited later. The home page shows saved topic names with green dots and no delete controls.
+
+### Topic pages
+
+Every topic is available at `/dot/<slug>`, for example `/dot/berlin-wall`.
+
+Each page contains:
+
+- an OpenStreetMap map with a green location marker;
+- an editable title and a fixed slug;
+- anonymous lines for that topic;
+- a random emoji user picture for every new line;
+- inline editing for existing lines;
+- Enter to submit a line and Shift+Enter for a new line;
+- Delete, which removes the complete topic and its lines.
 
 ## GitHub Pages routing
 
-Publish `main` / `(root)` in repository Settings → Pages. No per-topic files or commits are needed. GitHub serves the shared `404.html` for `/dot/<slug>`, retaining the requested address. Its assets use absolute `/dot/` paths, so direct links and reloads work. `404.html` and `topic.html` share the same shell; keep them identical (tests verify this). `.nojekyll` disables Jekyll processing. `dist` is an optional static build of the same public files.
+No HTML file is created for an individual topic. GitHub Pages serves the shared `404.html` fallback for `/dot/<slug>`, while the browser keeps the requested URL and loads the common topic interface. `404.html` and `topic.html` use the same shell. `.nojekyll` disables Jekyll processing.
 
-GitHub still returns HTTP 404 for these fallback documents, although the browser renders the topic. This is a GitHub Pages limitation and matters to crawlers. Unknown topics display the API's not-found message with editing disabled.
+GitHub Pages returns an HTTP 404 status for this fallback even though the browser renders the topic. This is a platform limitation. Unknown slugs show a not-found state with editing disabled.
 
-## JSON / API
+## JSON data and API
 
-Existing `DOT_DB` namespace `dcc82b9ba1ef4f868b7163e079086bc3` is preserved. Each `topic:<slug>` stores `{ slug, title, lat, lng, createdAt, posts: [{ id, text }] }`. Deletion removes that single record and its embedded posts. Legacy coordinate records are left untouched.
+Each topic is stored under `topic:<slug>` in `DOT_DB`:
 
-- `GET /api/topics`: `{ ok, data }`, all topic metadata, with KV pagination handled internally.
-- `POST /api/topic`: `{ title, coordinates: "52.5163, 13.3777" }` → `{ ok, topic }`.
-- `GET /api/topic?slug=berlin-wall` → `{ ok, topic }`.
-- `PUT /api/topic`: `{ slug, title }`; slug and coordinates stay fixed.
-- `DELETE /api/topic`: `{ slug }`.
-- `POST /api/topic/post`: `{ slug, text }` → `{ ok, post }`.
-- `PUT /api/topic/post`: `{ slug, id, text }` → `{ ok, post }`.
+```json
+{
+  "slug": "berlin-wall",
+  "title": "Berlin Wall",
+  "lat": 52.5163,
+  "lng": 13.3777,
+  "createdAt": "2026-09-15T12:00:00.000Z",
+  "posts": [
+    { "id": "uuid", "text": "An anonymous line", "emoji": "🦊" }
+  ]
+}
+```
 
-CORS permits the Pages UI. Non-API Worker paths return JSON 404, never HTML. Duplicate slugs return 409. Latitude must be within ±90 and longitude within ±180.
+Available endpoints:
 
-KV remains eventually consistent: changes can take time to appear across locations. Concurrent writes to one topic can overwrite each other because the existing architecture stores the whole topic in one KV value. This implementation preserves that minimal storage model.
+- `GET /api/topics` — list topic metadata;
+- `POST /api/topic` — create `{ "title", "coordinates" }`;
+- `GET /api/topic?slug=<slug>` — read one topic;
+- `PUT /api/topic` — edit `{ "slug", "title" }` without changing the slug;
+- `DELETE /api/topic` — delete `{ "slug" }`;
+- `POST /api/topic/post` — add `{ "slug", "text" }`;
+- `PUT /api/topic/post` — edit `{ "slug", "id", "text" }`.
 
-## Local checks and publication
+The API supports CORS for GitHub Pages. It validates coordinates, rejects duplicate slugs, and returns JSON errors. KV is eventually consistent, so a change can take a short time to appear in another location.
 
-Use Node.js 22+ for Wrangler. `npm test` checks Worker CRUD, deletion of lines, validation, CORS and Pages fallback routing. `npm run build` produces static `dist/`. `npm run dev` opens http://127.0.0.1:4173/dot/ and runs the real Worker against isolated in-memory data; restarting clears only this local data. Maps require network access to Leaflet and OpenStreetMap.
+## Social previews
 
-For Worker tooling, run `npm ci`; `npx wrangler deploy --dry-run` validates the deployment without publishing. `npm run deploy` publishes the API only. The existing GitHub workflow deploys Worker after a push to main using `CLOUDFLARE_API_TOKEN`. Pages publishes separately from the repository root. Both need the updated files for the final architecture.
+`index.html`, `topic.html`, and `404.html` include Open Graph and Twitter Card metadata. Telegram and Facebook use the shared banner at:
 
-Before your manual commit, check create → direct topic URL → reload → title edit (same slug) → add/edit line → Delete → HOME. Nothing is committed or pushed by the local scripts.
+```text
+https://indexmod.github.io/dot/assets/dot-share-banner.png
+```
+
+The description is: **A point on the map and a little anonymous chat.**
+
+## Local development
+
+Requirements: Node.js 22+.
+
+```bash
+npm ci
+npm test
+npm run build
+npm run dev
+```
+
+The local site opens at http://127.0.0.1:4173/dot/. Local development uses an isolated in-memory KV store; restarting the server clears local data. Maps require network access to Leaflet and OpenStreetMap.
+
+`npx wrangler deploy --dry-run` validates the Worker without publishing. `npm run deploy` publishes the API. The GitHub Actions workflow deploys the Worker after pushes to `main`; GitHub Pages publishes the repository root separately.
