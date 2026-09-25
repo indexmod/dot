@@ -13,8 +13,8 @@ body { background: #292b2e; color: #f2f2f2; font-family: Arial, Helvetica, sans-
 .topicTitle { width: 100%; margin: 0; padding: 0; border: 0; outline: 0; background: transparent; color: #f2f2f2; font: 400 42px/1.1 Arial, Helvetica, sans-serif; }
 .meta { margin: 8px 0 10px 30px; color: #777; font-size: 13px; }
 .topicActions { display: flex; align-items: baseline; gap: 12px; margin: 0 0 30px 30px; }
-.deleteTopic, .telegramShare { margin: 0; padding: 0; border: 0; background: transparent; color: #777; font: 13.3333px Arial, Helvetica, sans-serif; text-decoration: none; cursor: pointer; }
-.deleteTopic:hover, .telegramShare:hover { color: #f2f2f2; }
+.deleteTopic, .telegramShare, .telegramInvite { margin: 0; padding: 0; border: 0; background: transparent; color: #777; font: 13.3333px Arial, Helvetica, sans-serif; text-decoration: none; cursor: pointer; }
+.deleteTopic:hover, .telegramShare:hover, .telegramInvite:hover { color: #f2f2f2; }
 .posts { display: flex; flex-direction: column; }
 .post { padding: 8px 0; }
 .postText, #postInput { width: 100%; min-height: 34px; padding: 5px 0; resize: none; overflow: hidden; border: 0; outline: 0; background: transparent; color: #f2f2f2; font: 20px/1.45 Arial, Helvetica, sans-serif; }
