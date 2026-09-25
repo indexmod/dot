@@ -32,7 +32,10 @@
       <span class="topicDot" aria-hidden="true"></span>
       <input disabled id="topicTitle" class="topicTitle" aria-label="Topic name">
     </div>
-    <button disabled id="deleteTopic" class="deleteTopic" type="button">Delete</button>
+    <div class="topicActions">
+      <button disabled id="deleteTopic" class="deleteTopic" type="button">Delete</button>
+      <a hidden id="telegramShare" class="telegramShare" target="_blank" rel="noopener noreferrer">Telegram</a>
+    </div>
     <p id="status" role="status"></p>
     <div id="posts" class="posts"></div>
     <form id="composer" class="composer">

@@ -1,8 +1,9 @@
-import { API, HOME, routeSlug, readJson } from "./shared.js?v=3";
+import { API, HOME, topicUrl, routeSlug, readJson } from "./shared.js?v=3";
 const slug = routeSlug(location.pathname);
 const map = document.getElementById("map");
 const titleInput = document.getElementById("topicTitle");
 const deleteButton = document.getElementById("deleteTopic");
+const telegramShare = document.getElementById("telegramShare");
 const posts = document.getElementById("posts");
 const composer = document.getElementById("composer");
 const postInput = document.getElementById("postInput");
@@ -12,6 +13,12 @@ let topic = null;
 const lineEmojis = ["😀", "😎", "🤠", "🤓", "🥳", "😺", "🐼", "🦊", "🐸", "🐙", "🦄", "🐝", "🌈", "⭐", "🔥", "🍀", "🌻", "🍉", "🚀", "🎈"];
 function randomEmoji() { return lineEmojis[Math.floor(Math.random() * lineEmojis.length)]; }
 composerAvatar.textContent = randomEmoji();
+
+function updateTelegramShare() {
+  const url = `https://indexmod.github.io${topicUrl(slug)}`;
+  telegramShare.href = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(topic.title)}`;
+  telegramShare.hidden = false;
+}
 
 function renderMap() {
   if (!topic || !Number.isFinite(topic.lat) || !Number.isFinite(topic.lng)) return;
@@ -72,6 +79,7 @@ async function loadTopic() {
     titleInput.disabled = deleteButton.disabled = postInput.disabled = false;
     titleInput.value = topic.title;
     document.title = `${topic.title} — Dot`;
+    updateTelegramShare();
     renderMap();
     renderPosts();
   } catch (error) { status.textContent = error.message; }
@@ -92,6 +100,7 @@ titleInput.addEventListener("change", async () => {
     }));
     topic.title = result.topic.title;
     document.title = `${topic.title} — Dot`;
+    updateTelegramShare();
     status.textContent = "";
   } catch (error) { status.textContent = error.message; titleInput.value = topic.title; }
   finally { titleInput.disabled = deleteButton.disabled = false; }
